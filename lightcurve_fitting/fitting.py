@@ -7,21 +7,31 @@ from .lightcurve import filter_legend,flux2mag
 from .filters import filtdict
 from pkg_resources import resource_filename
 import warnings
+
 prior_warning='The p_max/p_min keywords are deprecated. Use the priors keyword instead.'
 model_kwargs_warning='The model_kwargs keyword is deprecated. These are now included in the model intialization.'
-def lightcurve_mcmc(lc,model,priors=None,p_min=None,p_max=None,p_lo=None,p_up=None,nwalkers=100,nsteps=1000,nsteps_burnin=1000,model_kwargs=None,show=False,save_plot_as='',save_sampler_as='',use_sigma=False,sigma_type='relative'):
+
+
+def lightcurve_mcmc(lc,model,priors=None,p_min=None,p_max=None,p_lo=None,p_up=None,nwalkers=100,
+    nsteps=1000,nsteps_burnin=1000,model_kwargs=None,show=False,save_plot_as='',
+    save_sampler_as='',use_sigma=False,sigma_type='relative'):
+
     if model_kwargs!=None:
         raise Exception(model_kwargs_warning)
+
     if model.output_quantity=='flux':
         lc.calcFlux()
     elif model.output_quantity=='lum':
         lc.calcAbsMag()
         lc.calcLum()
+
     if use_sigma and model.input_names[-1]!='\\sigma':
         model.input_names.append('\\sigma')
         model.units.append(u.dimensionless_unscaled)
     ndim=model.nparams
+
     #DEPRECATED
+
     if p_min==None:
         p_min=np.tile(-np.inf,ndim)
     elif len(p_min)==ndim:
@@ -29,33 +39,42 @@ def lightcurve_mcmc(lc,model,priors=None,p_min=None,p_max=None,p_lo=None,p_up=No
         warnings.warn(prior_warning)
     else:
         raise Exception(prior_warning)
+
     #DEPRECATED
+
     if p_max==None:
         p_max=np.tile(np.inf,ndim)
+
     elif len(p_max)==ndim:
         p_max=np.array(p_max,float)
         warnings.warn(prior_warning)
     else:
         raise Exception(prior_warning)
+
     if p_lo==None:
         p_lo=p_min
     elif len(p_lo)==ndim:
         p_lo=np.array(p_lo,float)
     else:
         raise Exception('p_lo must have length {:d}'.format(ndim))
+
     if len(p_up)==ndim:
         p_up=np.array(p_up,float)
     else:
         raise Exception('p_up must have length {:d}'.format(ndim))
+
     if priors==None:
         priors=[UniformPrior(p0,p1) for p0,p1 in zip(p_min,p_max)]
     elif len(priors)!=ndim:
         raise Exception('priors must have length {:d}'.format(ndim))
+
     for param,prior,p0,p1 in zip(model.input_names,priors,p_lo,p_up):
         if p0<prior.p_min:
             raise Exception(f'starting guess for {param} (p_lo={p0}) is outside prior (p_min={prior.p_min})')
         if p1>prior.p_max:
             raise Exception(f'starting guess for {param} (p_up={p1}) is outside prior (p_max={prior.p_max})')
+
+
     def log_posterior(p):
         log_prior=0.
         for prior,p_i in zip(priors,p):
@@ -64,9 +83,11 @@ def lightcurve_mcmc(lc,model,priors=None,p_min=None,p_max=None,p_lo=None,p_up=No
             return log_prior
         log_likelihood=model.log_likelihood(lc,p,use_sigma=use_sigma,sigma_type=sigma_type)
         return log_prior+log_likelihood
+
     sampler=emcee.EnsembleSampler(nwalkers,ndim,log_posterior)
     starting_guesses=np.random.rand(nwalkers,ndim)*(p_up-p_lo)+p_lo
     pos,_,_=sampler.run_mcmc(starting_guesses,nsteps_burnin,progress=True,progress_kwargs={'desc':' Burn-in'})
+
     if show or save_plot_as:
         fig,ax=plt.subplots(ndim,2,figsize=(12.,2.*ndim))
         ax1=ax[:,0]
@@ -77,9 +98,11 @@ def lightcurve_mcmc(lc,model,priors=None,p_min=None,p_max=None,p_lo=None,p_up=No
         ax1[-1].set_xlabel('Step Number')
     sampler.reset()
     sampler.run_mcmc(pos,nsteps,progress=True,progress_kwargs={'desc':'Sampling'},skip_initial_state_check=True)
+
     if save_sampler_as:
         np.save(save_sampler_as,sampler.flatchain)
         print('saving sampler.flatchain as '+save_sampler_as)
+
     if show or save_plot_as:
         ax2=ax[:,1]
         for i in range(ndim):
@@ -95,6 +118,7 @@ def lightcurve_mcmc(lc,model,priors=None,p_min=None,p_max=None,p_lo=None,p_up=No
             fig.savefig(save_plot_as)
         if show:
             plt.show()
+
     return sampler
 def lightcurve_corner(lc,model,sampler_flatchain,model_kwargs=None,num_models_to_plot=100,lcaxis_posn=(0.7,0.55,0.2,0.4),filter_spacing=1.,tmin=None,tmax=None,t0_offset=None,save_plot_as='',ycol=None,textsize='medium',param_textsize='large',use_sigma=False,xscale='linear',filters_to_model=None,label_filters=True,lc_plot_kwargs=None,model_plot_kwargs=None):
     if model_kwargs!=None:
