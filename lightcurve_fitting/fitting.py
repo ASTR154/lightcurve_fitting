@@ -16,21 +16,26 @@ def lightcurve_mcmc(lc,model,priors=None,p_min=None,p_max=None,p_lo=None,p_up=No
     nsteps=1000,nsteps_burnin=1000,model_kwargs=None,show=False,save_plot_as='',
     save_sampler_as='',use_sigma=False,sigma_type='relative'):
 
+    #add gap 
     if model_kwargs!=None:
         raise Exception(model_kwargs_warning)
 
+    #added  spacing
     if model.output_quantity=='flux':
         lc.calcFlux()
     elif model.output_quantity=='lum':
         lc.calcAbsMag()
         lc.calcLum()
 
+    #added spacing
     if use_sigma and model.input_names[-1]!='\\sigma':
         model.input_names.append('\\sigma')
         model.units.append(u.dimensionless_unscaled)
     ndim=model.nparams
 
     #DEPRECATED
+
+    #added spacing and separated the DEPRECATED
 
     if p_min==None:
         p_min=np.tile(-np.inf,ndim)
