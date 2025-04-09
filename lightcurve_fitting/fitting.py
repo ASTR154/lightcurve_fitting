@@ -16,26 +16,21 @@ def lightcurve_mcmc(lc,model,priors=None,p_min=None,p_max=None,p_lo=None,p_up=No
     nsteps=1000,nsteps_burnin=1000,model_kwargs=None,show=False,save_plot_as='',
     save_sampler_as='',use_sigma=False,sigma_type='relative'):
 
-    #add gap 
     if model_kwargs!=None:
         raise Exception(model_kwargs_warning)
 
-    #added  spacing
     if model.output_quantity=='flux':
         lc.calcFlux()
     elif model.output_quantity=='lum':
         lc.calcAbsMag()
         lc.calcLum()
 
-    #added spacing
     if use_sigma and model.input_names[-1]!='\\sigma':
         model.input_names.append('\\sigma')
         model.units.append(u.dimensionless_unscaled)
     ndim=model.nparams
 
     #DEPRECATED
-
-    #added spacing and separated the DEPRECATED
 
     if p_min==None:
         p_min=np.tile(-np.inf,ndim)
@@ -125,17 +120,24 @@ def lightcurve_mcmc(lc,model,priors=None,p_min=None,p_max=None,p_lo=None,p_up=No
             plt.show()
 
     return sampler
-def lightcurve_corner(lc,model,sampler_flatchain,model_kwargs=None,num_models_to_plot=100,lcaxis_posn=(0.7,0.55,0.2,0.4),filter_spacing=1.,tmin=None,tmax=None,t0_offset=None,save_plot_as='',ycol=None,textsize='medium',param_textsize='large',use_sigma=False,xscale='linear',filters_to_model=None,label_filters=True,lc_plot_kwargs=None,model_plot_kwargs=None):
+
+def lightcurve_corner(lc,model,sampler_flatchain,model_kwargs=None,num_models_to_plot=100,lcaxis_posn=(0.7,0.55,0.2,0.4),filter_spacing=1.,
+tmin=None,tmax=None,t0_offset=None,save_plot_as='',ycol=None,textsize='medium',param_textsize='large',use_sigma=False,xscale='linear',
+filters_to_model=None,label_filters=True,lc_plot_kwargs=None,model_plot_kwargs=None):
+
     if model_kwargs!=None:
         raise Exception(model_kwargs_warning)
+
     if ycol==None:
         ycol=model.output_quantity
     plt.style.use(resource_filename('lightcurve_fitting','serif.mplstyle'))
+
     if use_sigma and model.input_names[-1]!='\\sigma':
         model.input_names.append('\\sigma')
         model.units.append(u.dimensionless_unscaled)
     sampler_flatchain_corner=sampler_flatchain.copy()
     axis_labels_corner=model.axis_labels
+
     for var in ['t_0','t_\\mathrm{max}']:
         if var in model.input_names:
             i_t0=model.input_names.index(var)
@@ -145,43 +147,57 @@ def lightcurve_corner(lc,model,sampler_flatchain,model_kwargs=None,num_models_to
                 sampler_flatchain_corner[:,i_t0]-=t0_offset
                 t0_offset_formatted='{:f}'.format(t0_offset).rstrip('0').rstrip('.')
                 axis_labels_corner[i_t0]=f'${var}-{t0_offset_formatted}$ (d)'
+
     fig=corner.corner(sampler_flatchain_corner,labels=axis_labels_corner,label_kwargs={'size':textsize})
     corner_axes=np.array(fig.get_axes()).reshape(sampler_flatchain.shape[-1],sampler_flatchain.shape[-1])
+
     for i in range(sampler_flatchain.shape[-1]):
         corner_axes[i,0].tick_params(labelsize=textsize)
         corner_axes[-1,i].tick_params(labelsize=textsize)
+
     for ax in np.diag(corner_axes):
         ax.spines['top'].set_visible(False)
         ax.spines['left'].set_visible(False)
         ax.spines['right'].set_visible(False)
         ax.xaxis.set_ticks_position('bottom')
         ax.yaxis.set_ticks_position('none')
+
     ax=fig.add_axes(lcaxis_posn)
     #lightcurve model plot
+
     if model_kwargs!=None:
         raise Exception(model_kwargs_warning)
+
     if ycol==None:
         ycol=model.output_quantity
+
     if ax==None:
         ax=plt.axes()
+
     if use_sigma and model.input_names[-1]!='\\sigma':
         model.input_names.append('\\sigma')
         model.units.append(u.dimensionless_unscaled)
+
     choices=np.random.choice(sampler_flatchain.shape[0],num_models_to_plot)
     ps=sampler_flatchain[choices].T
+
     if tmin==None:
         tmin=np.min(lc['MJD'])
+
     if tmax==None:
         tmax=np.max(lc['MJD'])
     xfit=np.geomspace(tmin,tmax,1000) if xscale=='log' else np.linspace(tmin,tmax,1000)
+
     if filters_to_model==None:
         ufilts=np.unique(lc['filter'])
     else:
         ufilts=np.array([filtdict[f] for f in filters_to_model])
+
     if use_sigma:
         y_fit=model(xfit,ufilts,*ps[:-1])
     else:
         y_fit=model(xfit,ufilts,*ps)
+
     #for CompanionShocking,add SiFTO model as dashed lines
     if isinstance(model,CompanionShocking):
         y_fit1=model.stretched_sifto(xfit,ufilts,*ps[3:5])
@@ -191,8 +207,10 @@ def lightcurve_corner(lc,model,sampler_flatchain,model_kwargs=None,num_models_to
         y_fit1=model.stretched_sifto(xfit,ufilts,*ps[3:7])
     else:
         y_fit1=[None]*len(ufilts)
+
     if t0_offset==None:
         t0_offset=np.floor(tmin)
+
     if ycol=='lum':
         dycol='dlum'
         yscale=10.**np.round(np.log10(y_fit.max()))
@@ -211,20 +229,26 @@ def lightcurve_corner(lc,model,sampler_flatchain,model_kwargs=None,num_models_to
         ylabel='Flux $F_\\nu$ (10$^{{{:.0f}}}$ erg s$^{{-1}}$ m$^{{-2}}$ Hz$^{{-1}}$)+Offset'.format(np.log10(yscale)+7)#W-->erg/s
     else:
         raise ValueError(f'ycol="{ycol}" is not recognized. Use "lum","absmag","flux".')
+
     if lc_plot_kwargs==None:
         lc_plot_kwargs={}
+
     if model_plot_kwargs==None:
         model_plot_kwargs={}
     elif 'color' in model_plot_kwargs:
         del model_plot_kwargs['color']#ignore input color and use filter colors
     model_plot_kwargs1=model_plot_kwargs.copy()
     #set default alpha for the full model
+
     if 'alpha' not in model_plot_kwargs:
         model_plot_kwargs['alpha']=0.05
     #ignore input linestyle for model component and use dashed line
+
     if 'linestyle' in model_plot_kwargs1:
         del model_plot_kwargs1['linestyle']
+
     model_plot_kwargs1['ls']='--'
+
     if xscale=='log':
         ax.set_xscale('log')
         ax.xaxis.set_major_formatter(plt.FormatStrFormatter('%g'))
@@ -262,6 +286,7 @@ def lightcurve_corner(lc,model,sampler_flatchain,model_kwargs=None,num_models_to
     uncertainties=np.atleast_2d(uncertainties)
     roundto=np.atleast_1d(roundto)
     texstrings=[]
+
     for quant,unc,dec in zip(quantiles,uncertainties,roundto):
         center=np.round(quant[1],dec)
         lower,upper=np.round(unc,dec)
@@ -283,7 +308,9 @@ def lightcurve_corner(lc,model,sampler_flatchain,model_kwargs=None,num_models_to
             paramtexts.append('${}={}$ {:latex_inline}'.format(var,value,unit))
     #go back to plotting
     fig.text(0.45,0.95,'\n'.join(paramtexts),va='top',ha='center',fontdict={'size':param_textsize})
+
     if save_plot_as:
         fig.savefig(save_plot_as)
         print('saving figure as '+save_plot_as)
+
     return fig,corner_axes,ax
