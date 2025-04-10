@@ -5,6 +5,8 @@
 # -- added spaces between binary operators
 # -- I could try to change the string.format() instances to fstrings, but I could not interpret some of them,
 #    so I just left them alone.
+# -- Also wanted to move the definition of log_posterior() outside of the definition of lightcurve_mcmc(), but
+#    would be too complicated and I believe would have required changing multiple more files.
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -217,7 +219,7 @@ def lightcurve_corner(lc, model, sampler_flatchain, model_kwargs=None, #separate
         y_fit = model(xfit, ufilts, *ps)
     
     #for CompanionShocking,add SiFTO model as dashed lines
-    if isinstance(model,CompanionShocking):
+    if isinstance(model, CompanionShocking):
         y_fit1 = model.stretched_sifto(xfit, ufilts, *ps[3:5])
         y_fit1[ufilts == filtdict['r']] *= ps[5]
         y_fit1[ufilts == filtdict['i']] *= ps[6]
