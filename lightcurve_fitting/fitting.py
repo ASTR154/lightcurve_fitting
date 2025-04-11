@@ -2,25 +2,37 @@ import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
 import emcee,corner
+# moved "import warnings" to this spot here and create spaces between import and from to differentiate between them
+import warnings
+
 from .models import UniformPrior,CompanionShocking,BaseCompanionShocking
 from .lightcurve import filter_legend,flux2mag
 from .filters import filtdict
 from pkg_resources import resource_filename
-import warnings
+
 prior_warning='The p_max/p_min keywords are deprecated. Use the priors keyword instead.'
 model_kwargs_warning='The model_kwargs keyword is deprecated. These are now included in the model intialization.'
-def lightcurve_mcmc(lc,model,priors=None,p_min=None,p_max=None,p_lo=None,p_up=None,nwalkers=100,nsteps=1000,nsteps_burnin=1000,model_kwargs=None,show=False,save_plot_as='',save_sampler_as='',use_sigma=False,sigma_type='relative'):
+def lightcurve_mcmc(
+                    lc,model, priors=None, p_min=None, p_max=None,
+                    p_lo=None, p_up=None, nwalkers=100, nsteps=1000, 
+                    nsteps_burnin=1000, model_kwargs=None, show=False, save_plot_as='', 
+                    save_sampler_as='', use_sigma=False, sigma_type='relative'):
+# changed the indentation for the definition function
+
     if model_kwargs!=None:
         raise Exception(model_kwargs_warning)
+# added a space here to differentiate between the two "if" functions
     if model.output_quantity=='flux':
         lc.calcFlux()
     elif model.output_quantity=='lum':
         lc.calcAbsMag()
         lc.calcLum()
+
     if use_sigma and model.input_names[-1]!='\\sigma':
         model.input_names.append('\\sigma')
         model.units.append(u.dimensionless_unscaled)
     ndim=model.nparams
+
     #DEPRECATED
     if p_min==None:
         p_min=np.tile(-np.inf,ndim)
@@ -53,20 +65,33 @@ def lightcurve_mcmc(lc,model,priors=None,p_min=None,p_max=None,p_lo=None,p_up=No
         raise Exception('priors must have length {:d}'.format(ndim))
     for param,prior,p0,p1 in zip(model.input_names,priors,p_lo,p_up):
         if p0<prior.p_min:
-            raise Exception(f'starting guess for {param} (p_lo={p0}) is outside prior (p_min={prior.p_min})')
+            raise Exception(
+                f'starting guess for {param} (p_lo={p0}) is outside prior'
+                f'(p_min={prior.p_min})'
+                )
         if p1>prior.p_max:
-            raise Exception(f'starting guess for {param} (p_up={p1}) is outside prior (p_max={prior.p_max})')
+            raise Exception(
+                f'starting guess for {param} (p_up={p1}) is outside prior'
+                f'(p_max={prior.p_max})'
+                )
+    # changed the above two lines to have less than 79 characters per line
+
     def log_posterior(p):
         log_prior=0.
         for prior,p_i in zip(priors,p):
             log_prior+=prior(p_i)
         if np.isinf(log_prior):
             return log_prior
-        log_likelihood=model.log_likelihood(lc,p,use_sigma=use_sigma,sigma_type=sigma_type)
+        log_likelihood=model.log_likelihood(lc, p, use_sigma=use_sigma,
+                                            sigma_type=sigma_type)
+        # changed the above line to be less than 79 characters and indented the list
         return log_prior+log_likelihood
     sampler=emcee.EnsembleSampler(nwalkers,ndim,log_posterior)
     starting_guesses=np.random.rand(nwalkers,ndim)*(p_up-p_lo)+p_lo
-    pos,_,_=sampler.run_mcmc(starting_guesses,nsteps_burnin,progress=True,progress_kwargs={'desc':' Burn-in'})
+    pos,_,_=sampler.run_mcmc(starting_guesses, nsteps_burnin,
+                            progress=True, progress_kwargs={'desc':' Burn-in'})
+    # indented the list so that there's less than 79 characters in the line
+
     if show or save_plot_as:
         fig,ax=plt.subplots(ndim,2,figsize=(12.,2.*ndim))
         ax1=ax[:,0]
@@ -76,7 +101,8 @@ def lightcurve_mcmc(lc,model,priors=None,p_min=None,p_max=None,p_lo=None,p_up=No
         ax1[0].set_title('During Burn In')
         ax1[-1].set_xlabel('Step Number')
     sampler.reset()
-    sampler.run_mcmc(pos,nsteps,progress=True,progress_kwargs={'desc':'Sampling'},skip_initial_state_check=True)
+    sampler.run_mcmc(pos,nsteps,progress=True,
+                    progress_kwargs={'desc':'Sampling'},skip_initial_state_check=True)
     if save_sampler_as:
         np.save(save_sampler_as,sampler.flatchain)
         print('saving sampler.flatchain as '+save_sampler_as)
@@ -96,9 +122,17 @@ def lightcurve_mcmc(lc,model,priors=None,p_min=None,p_max=None,p_lo=None,p_up=No
         if show:
             plt.show()
     return sampler
-def lightcurve_corner(lc,model,sampler_flatchain,model_kwargs=None,num_models_to_plot=100,lcaxis_posn=(0.7,0.55,0.2,0.4),filter_spacing=1.,tmin=None,tmax=None,t0_offset=None,save_plot_as='',ycol=None,textsize='medium',param_textsize='large',use_sigma=False,xscale='linear',filters_to_model=None,label_filters=True,lc_plot_kwargs=None,model_plot_kwargs=None):
+#changed the indentation for the definition function
+def lightcurve_corner(lc, model, sampler_flatchain, model_kwargs=None, 
+                    num_models_to_plot=100, lcaxis_posn=(0.7,0.55,0.2,0.4),
+                    filter_spacing=1., tmin=None,tmax=None, t0_offset=None, save_plot_as='',
+                    ycol=None,textsize='medium',param_textsize='large',use_sigma=False,
+                    xscale='linear', filters_to_model=None, label_filters=True, 
+                    lc_plot_kwargs=None,model_plot_kwargs=None):
+
     if model_kwargs!=None:
         raise Exception(model_kwargs_warning)
+
     if ycol==None:
         ycol=model.output_quantity
     plt.style.use(resource_filename('lightcurve_fitting','serif.mplstyle'))
@@ -107,6 +141,7 @@ def lightcurve_corner(lc,model,sampler_flatchain,model_kwargs=None,num_models_to
         model.units.append(u.dimensionless_unscaled)
     sampler_flatchain_corner=sampler_flatchain.copy()
     axis_labels_corner=model.axis_labels
+
     for var in ['t_0','t_\\mathrm{max}']:
         if var in model.input_names:
             i_t0=model.input_names.index(var)
@@ -116,8 +151,12 @@ def lightcurve_corner(lc,model,sampler_flatchain,model_kwargs=None,num_models_to
                 sampler_flatchain_corner[:,i_t0]-=t0_offset
                 t0_offset_formatted='{:f}'.format(t0_offset).rstrip('0').rstrip('.')
                 axis_labels_corner[i_t0]=f'${var}-{t0_offset_formatted}$ (d)'
-    fig=corner.corner(sampler_flatchain_corner,labels=axis_labels_corner,label_kwargs={'size':textsize})
-    corner_axes=np.array(fig.get_axes()).reshape(sampler_flatchain.shape[-1],sampler_flatchain.shape[-1])
+    fig=corner.corner(sampler_flatchain_corner,
+                    labels=axis_labels_corner,label_kwargs={'size':textsize})
+    corner_axes=np.array(fig.get_axes()).reshape(
+                sampler_flatchain.shape[-1],sampler_flatchain.shape[-1])
+    # changed the indentation of the line
+
     for i in range(sampler_flatchain.shape[-1]):
         corner_axes[i,0].tick_params(labelsize=textsize)
         corner_axes[-1,i].tick_params(labelsize=textsize)
@@ -128,6 +167,8 @@ def lightcurve_corner(lc,model,sampler_flatchain,model_kwargs=None,num_models_to
         ax.xaxis.set_ticks_position('bottom')
         ax.yaxis.set_ticks_position('none')
     ax=fig.add_axes(lcaxis_posn)
+
+    # added a space below to separate the paragraphs
     #lightcurve model plot
     if model_kwargs!=None:
         raise Exception(model_kwargs_warning)
@@ -167,7 +208,9 @@ def lightcurve_corner(lc,model,sampler_flatchain,model_kwargs=None,num_models_to
     if ycol=='lum':
         dycol='dlum'
         yscale=10.**np.round(np.log10(y_fit.max()))
-        ylabel='Luminosity $L_\\nu$ (10$^{{{:.0f}}}$ erg s$^{{-1}}$ Hz$^{{-1}}$)+Offset'.format(np.log10(yscale)+7)#W-->erg/s
+        ylabel='Luminosity $L_\\nu$ (10$^{{{:.0f}}}$' 
+                'erg s$^{{-1}}$ Hz$^{{-1}}$)+Offset'.format(np.log10(yscale)+7)#W-->erg/s
+                # indented the string to have less than 79 characters
     elif ycol=='absmag':
         dycol='dmag'
         yscale=1.
@@ -179,9 +222,14 @@ def lightcurve_corner(lc,model,sampler_flatchain,model_kwargs=None,num_models_to
     elif ycol=='flux':
         dycol='dflux'
         yscale=10.**np.round(np.log10(y_fit.max()))
-        ylabel='Flux $F_\\nu$ (10$^{{{:.0f}}}$ erg s$^{{-1}}$ m$^{{-2}}$ Hz$^{{-1}}$)+Offset'.format(np.log10(yscale)+7)#W-->erg/s
+        ylabel='Flux $F_\\nu$ (10$^{{{:.0f}}}$' 
+            'erg s$^{{-1}}$ m$^{{-2}}$ Hz$^{{-1}}$)+Offset'.format(np.log10(yscale)+7) #W-->erg/s
+            # applied the same indentation as before
     else:
-        raise ValueError(f'ycol="{ycol}" is not recognized. Use "lum","absmag","flux".')
+        raise ValueError(f'ycol="{ycol}" is not recognized.' 
+            'Use "lum","absmag","flux".')
+    # changed indentation above and entered a new line below to separate the paragraphs of code
+
     if lc_plot_kwargs==None:
         lc_plot_kwargs={}
     if model_plot_kwargs==None:
@@ -205,16 +253,24 @@ def lightcurve_corner(lc,model,sampler_flatchain,model_kwargs=None,num_models_to
     lc['MJD']-=t0_offset
     lc[ycol]/=yscale
     lc[dycol]/=yscale
-    lc.plot(xcol='MJD',ycol=ycol,offset_factor=filter_spacing,appmag_axis=False,tight_layout=False,**lc_plot_kwargs)
+    lc.plot(xcol='MJD',ycol=ycol,offset_factor=filter_spacing,
+        appmag_axis=False,tight_layout=False,**lc_plot_kwargs)
     plt.autoscale(False)
     _,labels,_=filter_legend(np.array(ufilts),filter_spacing)
+
+# applied indentation to lines that exceed 79 characters below
     for yfit,yfit1,filt,txt in zip(y_fit,y_fit1,ufilts,labels):
         offset=-filt.offset*filter_spacing
-        ax.plot(xfit-t0_offset,yfit/yscale+offset,color=filt.linecolor,**model_plot_kwargs)
+        ax.plot(xfit-t0_offset,yfit/yscale+offset,
+            color=filt.linecolor,**model_plot_kwargs)
         if yfit1!=None:
-            ax.plot(xfit-t0_offset,np.median(yfit1,axis=1)/yscale+offset,color=filt.linecolor,**model_plot_kwargs1)
+            ax.plot(xfit-t0_offset,np.median(yfit1,axis=1)/yscale+offset,
+                color=filt.linecolor,**model_plot_kwargs1)
         if label_filters:
-            ax.text(1.03,yfit[-1,0]/yscale+offset,txt,color=filt.textcolor,fontdict={'size':textsize},ha='left',va='center',transform=ax.get_yaxis_transform())
+            ax.text(1.03,yfit[-1,0]/yscale+offset,txt,color=filt.textcolor,
+                fontdict={'size':textsize},ha='left',va='center',
+                transform=ax.get_yaxis_transform())
+
     ax.set_xlabel('MJD $-$ {:f}'.format(t0_offset).rstrip('0').rstrip('.'),size=textsize)
     ax.set_ylabel(ylabel,size=textsize)
     ax.tick_params(labelsize=textsize)
@@ -233,6 +289,7 @@ def lightcurve_corner(lc,model,sampler_flatchain,model_kwargs=None,num_models_to
     uncertainties=np.atleast_2d(uncertainties)
     roundto=np.atleast_1d(roundto)
     texstrings=[]
+    
     for quant,unc,dec in zip(quantiles,uncertainties,roundto):
         center=np.round(quant[1],dec)
         lower,upper=np.round(unc,dec)
@@ -241,7 +298,8 @@ def lightcurve_corner(lc,model,sampler_flatchain,model_kwargs=None,num_models_to
         if upper==lower:
             texstring='{{:.{0:d}f}} \\pm {{:.{0:d}f}}'.format(dec).format(center,upper)
         else:
-            texstring='{{:.{0:d}f}}^{{{{+{{:.{0:d}f}}}}}}_{{{{-{{:.{0:d}f}}}}}}'.format(dec).format(center,upper,lower)
+            texstring='{{:.{0:d}f}}^{{{{+{{:.{0:d}f}}}}}}'
+                    ' _{{{{-{{:.{0:d}f}}}}}}'.format(dec).format(center,upper,lower)
         texstrings.append(texstring)
     if model.input_names==None or model.units==None:
         paramtexts=texstrings
