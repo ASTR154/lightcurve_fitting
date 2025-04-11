@@ -199,6 +199,7 @@ filters_to_model=None,label_filters=True,lc_plot_kwargs=None,model_plot_kwargs=N
         y_fit=model(xfit,ufilts,*ps)
 
     #for CompanionShocking,add SiFTO model as dashed lines
+
     if isinstance(model,CompanionShocking):
         y_fit1=model.stretched_sifto(xfit,ufilts,*ps[3:5])
         y_fit1[ufilts==filtdict['r']]*=ps[5]
