@@ -10,6 +10,9 @@ import warnings
 prior_warning='The p_max/p_min keywords are deprecated. Use the priors keyword instead.'
 model_kwargs_warning='The model_kwargs keyword is deprecated. These are now included in the model intialization.'
 def lightcurve_mcmc(lc,model,priors=None,p_min=None,p_max=None,p_lo=None,p_up=None,nwalkers=100,nsteps=1000,nsteps_burnin=1000,model_kwargs=None,show=False,save_plot_as='',save_sampler_as='',use_sigma=False,sigma_type='relative'):
+
+#Not sure what changes I should make -Alexis
+#I have loaded i nand will push changes.
     if model_kwargs!=None:
         raise Exception(model_kwargs_warning)
     if model.output_quantity=='flux':
